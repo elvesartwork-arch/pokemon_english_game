@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Preposition Master</title>
+    <style>
+        body { font-family: sans-serif; background: #888888; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        @keyframes shake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-8px, 4px); } 50% { transform: translate(8px, -4px); } 75% { transform: translate(-8px, -4px); } }
+        .damage-flash { background-color: #5c1616 !important; }
+        .heal-flash { background-color: #4caf50 !important; }
+        .shake-effect { animation: shake 0.12s linear 3; }
+        #game-box { width: 90%; max-width: 380px; background: #fff; border-radius: 20px; padding: 20px; border: 6px solid #3c5aa6; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.3); }
+        .status-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .hp-bar { flex-grow: 1; height: 16px; background: #eee; border: 2px solid #333; border-radius: 12px; overflow: hidden; margin: 0 10px; }
+        #hp-fill { width: 100%; height: 100%; background: #4caf50; transition: width 0.4s; }
+        .combo-badge { font-size: 0.75em; background: #ffcb05; padding: 4px 10px; border-radius: 10px; font-weight: bold; color: #3c5aa6; border: 2px solid #3c5aa6; }
+        #stage { height: 160px; display: flex; justify-content: center; align-items: center; margin: 15px 0; background: #f0f0f0; border-radius: 15px; border: 3px solid #bbb; }
+        #pokemon-img { width: 120px; height: 120px; image-rendering: pixelated; }
+        .catch-anim { transform: scale(0) rotate(720deg); opacity: 0; transition: 0.5s; }
+        #question { font-size: 1em; min-height: 65px; color: #2a75bb; font-weight: bold; margin: 10px 0; display: flex; align-items: center; justify-content: center; padding: 0 10px; line-height: 1.3; }
+        .options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button { padding: 12px; border-radius: 10px; border: 2.5px solid #3c5aa6; background: #fff; cursor: pointer; font-size: 0.95em; font-weight: bold; color: #3c5aa6; box-shadow: 0 4px 0 #3c5aa6; }
+        button:active { transform: translateY(3px); box-shadow: none; }
+        #msg { height: 25px; font-weight: bold; margin-bottom: 8px; font-size: 0.9em; color: #444; }
+    </style>
+</head>
+<body>
+<div id="game-box">
+    <div class="status-row">
+        <span style="color:#ed1c24; font-weight:bold; font-size:0.8em;">HP</span>
+        <div class="hp-bar"><div id="hp-fill"></div></div>
+        <div class="combo-badge">Combo: <span id="combo-count">0</span></div>
+    </div>
+    <div style="text-align: left; font-size: 0.8em; color: #888;">LV. <span id="progress">1</span> / 100</div>
+    <div id="stage"><img id="pokemon-img" src="" alt="Pokemon"></div>
+    <div id="msg">目標出現了！</div>
+    <div id="question"></div>
+    <div class="options" id="btn-group"></div>
+</div>
+
+<script>
+    const questions = [
+        { q: "The cat is ___ the chair.", a: ["under", "at", "to", "for"], c: "under" },
+        { q: "We have lunch ___ noon.", a: ["at", "on", "in", "to"], c: "at" },
+        { q: "Christmas is ___ December.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "There is a clock ___ the wall.", a: ["on", "in", "at", "under"], c: "on" },
+        { q: "Sit ___ your two friends.", a: ["between", "next", "in", "to"], c: "between" },
+        { q: "I go to school ___ bus.", a: ["by", "on", "in", "with"], c: "by" },
+        { q: "The shop is next ___ the bank.", a: ["to", "at", "on", "in"], c: "to" },
+        { q: "We play games ___ Sundays.", a: ["on", "at", "in", "of"], c: "on" },
+        { q: "Please listen ___ the teacher.", a: ["to", "at", "for", "on"], c: "to" },
+        { q: "I live ___ Hong Kong.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "Look ___ the whiteboard.", a: ["at", "to", "in", "for"], c: "at" },
+        { q: "The dog is sleeping ___ the table.", a: ["under", "above", "at", "to"], c: "under" },
+        { q: "My birthday is ___ June 1st.", a: ["on", "in", "at", "by"], c: "on" },
+        { q: "Birds fly ___ the sky.", a: ["in", "on", "at", "under"], c: "in" },
+        { q: "We watch TV ___ the evening.", a: ["in", "at", "on", "by"], c: "in" },
+        { q: "Wait ___ the bus stop.", a: ["at", "on", "in", "to"], c: "at" },
+        { q: "He is good ___ English.", a: ["at", "in", "on", "to"], c: "at" },
+        { q: "The pen is ___ the box.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "I like to read ___ night.", a: ["at", "in", "on", "for"], c: "at" },
+        { q: "The ball is ___ the bag.", a: ["inside", "at", "to", "for"], c: "inside" },
+        { q: "The picture is ___ the wall.", a: ["on", "in", "at", "under"], c: "on" },
+        { q: "I go to school ___ foot.", a: ["on", "by", "at", "with"], c: "on" },
+        { q: "She is hiding ___ the door.", a: ["behind", "at", "on", "to"], c: "behind" },
+        { q: "I am interested ___ music.", a: ["in", "at", "on", "to"], c: "in" },
+        { q: "Let's meet ___ 4:30 p.m.", a: ["at", "on", "in", "to"], c: "at" },
+        { q: "They go to the park ___ Sundays.", a: ["on", "at", "in", "for"], c: "on" },
+        { q: "The bridge is ___ the river.", a: ["over", "under", "at", "in"], c: "over" },
+        { q: "Don't run ___ the classroom.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "Put your shoes ___ the bed.", a: ["under", "at", "in", "on"], c: "under" },
+        { q: "The cinema is ___ the bakery.", a: ["behind", "on", "at", "in"], c: "behind" },
+        { q: "My keys are ___ my pocket.", a: ["in", "on", "at", "by"], c: "in" },
+        { q: "The plane is flying ___ the clouds.", a: ["above", "under", "on", "at"], c: "above" },
+        { q: "He arrived ___ Monday morning.", a: ["on", "at", "in", "for"], c: "on" },
+        { q: "They are waiting ___ the entrance.", a: ["at", "in", "on", "to"], c: "at" },
+        { q: "The library is ___ the museum.", a: ["near", "at", "to", "on"], c: "near" },
+        { q: "We go on holiday ___ summer.", a: ["in", "at", "on", "by"], c: "in" },
+        { q: "I'm proud ___ your hard work.", a: ["of", "at", "with", "for"], c: "of" },
+        { q: "The lamp is ___ the desk.", a: ["on", "in", "at", "under"], c: "on" },
+        { q: "I usually wake up ___ 7 o'clock.", a: ["at", "on", "in", "by"], c: "at" },
+        { q: "The mouse ran ___ the hole.", a: ["into", "on", "at", "to"], c: "into" },
+        { q: "He's afraid ___ spiders.", a: ["of", "at", "with", "to"], c: "of" },
+        { q: "She is leaning ___ the wall.", a: ["against", "on", "at", "in"], c: "against" },
+        { q: "We walked ___ the forest.", a: ["through", "at", "on", "to"], c: "through" },
+        { q: "Put the rubbish ___ the bin.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "They live ___ the 5th floor.", a: ["on", "in", "at", "by"], c: "on" },
+        { q: "I'll see you ___ a few minutes.", a: ["in", "at", "on", "to"], c: "in" },
+        { q: "The cat jumped ___ the fence.", a: ["over", "under", "in", "at"], c: "over" },
+        { q: "The teacher is standing ___ the board.", a: ["in front of", "on", "at", "to"], c: "in front of" },
+        { q: "It's cold ___ January.", a: ["in", "on", "at", "by"], c: "in" },
+        { q: "I'm looking ___ my lost pen.", a: ["for", "at", "in", "on"], c: "for" },
+        { q: "She is sitting ___ the fireplace.", a: ["by", "on", "in", "to"], c: "by" },
+        { q: "The cup is ___ the saucer.", a: ["on", "in", "at", "under"], c: "on" },
+        { q: "We study ___ the library.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "The shop closes ___ midnight.", a: ["at", "on", "in", "by"], c: "at" },
+        { q: "He is famous ___ his songs.", a: ["for", "at", "of", "with"], c: "for" },
+        { q: "Don't talk ___ the exam.", a: ["during", "at", "on", "in"], c: "during" },
+        { q: "The socks are ___ the drawer.", a: ["in", "on", "at", "under"], c: "in" },
+        { q: "The stars shine ___ night.", a: ["at", "in", "on", "to"], c: "at" },
+        { q: "I was born ___ 2012.", a: ["in", "on", "at", "by"], c: "in" },
+        { q: "Keep the books ___ the shelf.", a: ["on", "in", "at", "under"], c: "on" },
+        { q: "Translate this ___ Chinese.", a: ["into", "at", "on", "to"], c: "into" },
+        { q: "He is traveling ___ train.", a: ["by", "on", "in", "with"], c: "by" },
+        { q: "She is married ___ a doctor.", a: ["to", "with", "at", "for"], c: "to" },
+        { q: "I am late ___ school.", a: ["for", "to", "at", "in"], c: "for" },
+        { q: "The kite is ___ the tree.", a: ["above", "under", "at", "in"], c: "above" },
+        { q: "We met ___ the airport.", a: ["at", "in", "on", "to"], c: "at" },
+        { q: "Please wait ___ me.", a: ["for", "at", "on", "to"], c: "for" },
+        { q: "He's laughing ___ the joke.", a: ["at", "on", "in", "to"], c: "at" },
+        { q: "The train leaves ___ 10:00.", a: ["at", "on", "in", "by"], c: "at" },
+        { q: "What's ___ the menu?", a: ["on", "in", "at", "to"], c: "on" },
+        { q: "I'm busy ___ my homework.", a: ["with", "at", "on", "in"], c: "with" },
+        { q: "The bathroom is ___ the hall.", a: ["down", "on", "at", "in"], c: "down" },
+        { q: "The shoes are ___ the chair.", a: ["under", "on", "at", "in"], c: "under" },
+        { q: "We went ___ the cinema.", a: ["to", "at", "in", "on"], c: "to" },
+        { q: "The butter is ___ the fridge.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "He is kind ___ animals.", a: ["to", "with", "at", "for"], c: "to" },
+        { q: "I'm angry ___ you.", a: ["with", "at", "to", "on"], c: "with" },
+        { q: "The ship sailed ___ the ocean.", a: ["across", "at", "on", "to"], c: "across" },
+        { q: "I'll meet you ___ lunch.", a: ["at", "on", "in", "to"], c: "at" },
+        { q: "The boy is ___ the bicycle.", a: ["on", "at", "in", "to"], c: "on" },
+        { q: "He's good ___ playing football.", a: ["at", "in", "on", "for"], c: "at" },
+        { q: "The birds are ___ the roof.", a: ["on", "in", "at", "under"], c: "on" },
+        { q: "She is worried ___ her cat.", a: ["about", "at", "with", "to"], c: "about" },
+        { q: "My father is ___ work.", a: ["at", "in", "on", "to"], c: "at" },
+        { q: "Divide the cake ___ four.", a: ["into", "at", "on", "to"], c: "into" },
+        { q: "The plane is ___ the city.", a: ["over", "on", "at", "in"], c: "over" },
+        { q: "I'm tired ___ studying.", a: ["of", "with", "at", "for"], c: "of" },
+        { q: "They go to church ___ Sundays.", a: ["on", "at", "in", "to"], c: "on" },
+        { q: "The mirror is ___ the sink.", a: ["above", "under", "at", "in"], c: "above" },
+        { q: "The pen is ___ your ear.", a: ["behind", "at", "on", "to"], c: "behind" },
+        { q: "He is waiting ___ the bus.", a: ["for", "at", "on", "to"], c: "for" },
+        { q: "The gift is ___ you.", a: ["for", "at", "to", "in"], c: "for" },
+        { q: "I will go ___ Saturday.", a: ["on", "at", "in", "by"], c: "on" },
+        { q: "The park is ___ the hospital.", a: ["opposite", "at", "on", "to"], c: "opposite" },
+        { q: "She's reading a book ___ history.", a: ["about", "on", "at", "in"], c: "about" },
+        { q: "I have a meeting ___ 9 a.m.", a: ["at", "on", "in", "to"], c: "at" },
+        { q: "There is water ___ the glass.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "He fell ___ his bike.", a: ["off", "at", "on", "to"], c: "off" },
+        { q: "We are ___ the elevator.", a: ["in", "on", "at", "to"], c: "in" },
+        { q: "The restaurant is ___ the corner.", a: ["on", "in", "at", "to"], c: "on" },
+        { q: "The ball rolled ___ the table.", a: ["under", "on", "at", "to"], c: "under" }
+    ];
+
+    let quizData = [...questions].sort(() => Math.random() - 0.5);
+    let hp = 100, current = 0, combo = 0;
+
+    function loadQuestion() {
+        if (hp <= 0 || current >= quizData.length) { endGame(hp > 0); return; }
+        const data = quizData[current];
+        document.getElementById('question').innerText = data.q;
+        document.getElementById('progress').innerText = current + 1;
+        document.getElementById('msg').innerText = "野生寶可夢出現了！";
+        
+        const img = document.getElementById('pokemon-img');
+        const randomId = Math.floor(Math.random() * 151) + 1;
+        
+        // --- 修正後的圖源路徑 (使用反引號模板字串) ---
+        img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${randomId}.png`;
+        
+        img.classList.remove('catch-anim');
+        const btnGroup = document.getElementById('btn-group');
+        btnGroup.innerHTML = '';
+        const shuffled = [...data.a].sort(() => Math.random() - 0.5);
+        shuffled.forEach(choice => {
+            const btn = document.createElement('button');
+            btn.innerText = choice;
+            btn.onclick = () => checkAnswer(choice, data.c);
+            btnGroup.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(picked, correct) {
+        if (picked === correct) {
+            combo++; current++;
+            document.getElementById('msg').innerText = "成功收服！";
+            document.getElementById('pokemon-img').classList.add('catch-anim');
+            document.body.classList.add('heal-flash');
+            setTimeout(() => { document.body.classList.remove('heal-flash'); loadQuestion(); }, 600);
+        } else {
+            hp -= 20; combo = 0;
+            document.getElementById('msg').innerText = "受到攻擊！";
+            document.body.classList.add('damage-flash');
+            document.getElementById('game-box').classList.add('shake-effect');
+            updateUI();
+            if (hp <= 0) setTimeout(() => endGame(false), 500);
+            else setTimeout(() => {
+                document.body.classList.remove('damage-flash');
+                document.getElementById('game-box').classList.remove('shake-effect');
+            }, 400);
+        }
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('hp-fill').style.width = hp + "%";
+        document.getElementById('combo-count').innerText = combo;
+    }
+
+    function endGame(win) {
+        document.getElementById('game-box').innerHTML = `<h2>${win ? 'MISSION CLEAR!' : 'GAME OVER'}</h2><p>收服: ${current} / 100</p><button onclick="location.reload()" style="width:100%; padding:15px; margin-top:10px;">RETRY</button>`;
+    }
+
+    updateUI(); loadQuestion();
+</script>
+</body>
+</html>
